@@ -8,8 +8,8 @@ require "sidekiq"
 require "sidekiq/web"
 
 # internal
-require_relative "./registry"
-require_relative "./web/stats"
+require_relative "registry"
+require_relative "web/stats"
 
 module Sidekiq
   module Throttled
@@ -21,7 +21,9 @@ module Sidekiq
       class << self
         # @api private
         def registered(app)
-          register_throttled_tab app
+          register_throttled_tab(app)
+
+          Sidekiq::Web.tabs["Throttled"] = "throttled"
         end
 
         private
@@ -39,5 +41,4 @@ module Sidekiq
   end
 end
 
-Sidekiq::Web.register Sidekiq::Throttled::Web
-Sidekiq::Web.tabs["Throttled"] = "throttled"
+Sidekiq::Web.register(Sidekiq::Throttled::Web)

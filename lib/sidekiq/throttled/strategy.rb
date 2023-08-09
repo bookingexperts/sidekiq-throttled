@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # internal
-require_relative "./errors"
-require_relative "./strategy_collection"
-require_relative "./strategy/concurrency"
-require_relative "./strategy/threshold"
+require_relative "errors"
+require_relative "strategy_collection"
+require_relative "strategy/concurrency"
+require_relative "strategy/threshold"
 
 module Sidekiq
   module Throttled

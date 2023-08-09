@@ -1,40 +1,21 @@
 = Sidekiq::Throttled
-:ci-link: https://github.com/ixti/sidekiq-throttled/actions/workflows/ci.yml
-:ci-badge: https://img.shields.io/github/actions/workflow/status/ixti/sidekiq-throttled/ci.yml?branch=main&style=for-the-badge
-:gem-link: http://rubygems.org/gems/sidekiq-throttled
-:gem-badge: https://img.shields.io/gem/v/sidekiq-throttled?style=for-the-badge
-:doc-link: http://www.rubydoc.info/gems/sidekiq-throttled
-:doc-badge: https://img.shields.io/badge/Documentation-API-blue?style=for-the-badge
 
-****
-{ci-link}[image:{ci-badge}[CI Status]]
-{gem-link}[image:{gem-badge}[Latest Version]]
-{doc-link}[image:{doc-badge}[API Documentation]]
-****
-
-NOTE: This is the 1.x *development* branch. For the 0.x *stable* branch, please
-  see: https://github.com/ixti/sidekiq-throttled/tree/0-x-stable[0-x-stable]
-
-Concurrency and threshold throttling for https://github.com/mperham/sidekiq[Sidekiq].
-
+Concurrency and threshold throttling for https://github.com/sidekiq/sidekiq[Sidekiq].
 
 == Installation
 
-Add this line to your application's Gemfile:
+Clone the source code to a local directory and add the following lines to your application's Gemfile:
 
 [source,ruby]
 ----
-gem "sidekiq-throttled"
+path 'relative/path/to/parent/directory/of/gem' do
+  gem 'sidekiq-throttled'
+end
 ----
 
 And then execute:
 
   $ bundle
-
-Or install it yourself as:
-
-  $ gem install sidekiq-throttled
-
 
 == Usage
 
@@ -227,13 +208,20 @@ lock TTL to fit your needs:
 sidekiq_throttle(concurrency: { limit: 20, ttl: 1.hour.to_i })
 ----
 
+## Sidekiq Pro/SuperFetch support
+
+Sidekiq Pro offers improved reliability through, amongst others, SuperFetch which
+prevents jobs from being lost when a worker crashes or is killed.
+
+This gem can make use of SuperFetch for fetching jobs while still applying
+throttling as configured. By default this gem picks up the configured fetcher
+from Sidekiq. Make sure to call `Sidekiq.super_fetch!` _before_
+`Sidekiq::Throttled.setup!`.
 
 == Supported Ruby Versions
 
 This library aims to support and is tested against the following Ruby versions:
 
-* Ruby 2.7.x
-* Ruby 3.0.x
 * Ruby 3.1.x
 * Ruby 3.2.x
 
@@ -259,6 +247,9 @@ This library aims to support and work with following Sidekiq versions:
 * Sidekiq 7.0.x
 * Sidekiq 7.1.x
 
+And the following Sidekiq Pro versions:
+
+* Sidekiq Pro 5.5.x
 
 == Development
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # internal
-require_relative "./strategy"
+require_relative "strategy"
 
 module Sidekiq
   module Throttled

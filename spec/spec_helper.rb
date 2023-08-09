@@ -4,6 +4,7 @@ require_relative "support/simplecov" if ENV["CI"] || ENV["COVERAGE"]
 require_relative "support/sidekiq"
 require_relative "support/timecop"
 
+require "debug"
 require "sidekiq/throttled"
 
 RSpec::Matchers.define_negated_matcher :keep_unchanged, :change
@@ -94,4 +95,15 @@ RSpec.configure do |config|
   # test failures related to randomization by passing the same `--seed` value
   # as the one that triggered the failure.
   Kernel.srand config.seed
+
+  config.around(:each, verify_stubs: false) do |ex|
+    config.mock_with :rspec do |mocks|
+      mocks.verify_partial_doubles = false
+
+      ex.run
+
+    ensure
+      mocks.verify_partial_doubles = true
+    end
+  end
 end

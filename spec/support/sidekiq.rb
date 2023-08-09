@@ -8,7 +8,13 @@ require "stringio"
 require "sidekiq"
 require "sidekiq/cli"
 
-$TESTING = false # rubocop:disable Style/GlobalVars
+begin
+  require "sidekiq-pro"
+rescue LoadError
+  true
+end
+
+$TESTING = true # rubocop:disable Style/GlobalVars
 
 REDIS_URL = ENV.fetch("REDIS_URL", "redis://localhost:6379")
 
@@ -35,12 +41,12 @@ class PseudoLogger < Logger
   end
 end
 
-if Gem::Version.new(Sidekiq::VERSION) < Gem::Version.new("7.0.0")
-  Sidekiq[:queues] = %i[default]
-else
+if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
   Sidekiq.configure_server do |config|
     config.queues = %i[default]
   end
+else
+  Sidekiq[:queues] = %i[default]
 end
 
 Sidekiq.configure_server do |config|
@@ -63,6 +69,23 @@ RSpec.configure do |config|
     Sidekiq.redis do |conn|
       conn.flushdb
       conn.script("flush")
+    end
+  end
+
+  config.around do |ex|
+    @_old_sidekiq_options =
+      if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
+        Sidekiq.default_configuration.instance_variable_get(:@options).dup
+      else
+        Sidekiq.options.dup
+      end
+
+    ex.run
+
+    if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
+      Sidekiq.default_configuration.instance_variable_set(:@options, @_old_sidekiq_options)
+    else
+      Sidekiq.options = @_old_sidekiq_options
     end
   end
 end

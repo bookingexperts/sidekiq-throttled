@@ -2,7 +2,7 @@
 
 require "redis_prescription"
 
-require_relative "./base"
+require_relative "base"
 
 module Sidekiq
   module Throttled

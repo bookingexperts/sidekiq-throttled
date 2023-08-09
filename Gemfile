@@ -26,9 +26,12 @@ group :test do
 end
 
 group :development, optional: true do
-  gem "debug"
   gem "guard"
   gem "guard-rspec"
+end
+
+group :test, :development do
+  gem 'debug', '>= 1.0.0'
 end
 
 group :doc, optional: true do
