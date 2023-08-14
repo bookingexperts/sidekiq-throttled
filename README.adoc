@@ -250,6 +250,9 @@ This library aims to support and work with following Sidekiq versions:
 And the following Sidekiq Pro versions:
 
 * Sidekiq Pro 5.5.x
+* Sidekiq Pro 7.0.x
+* Sidekiq Pro 7.1.x
+
 
 == Development
 

@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correctly finalize throttled jobs when used with ActiveJob
   [#151](https://github.com/ixti/sidekiq-throttled/pull/151)
 
+### Added
+
+- Add Sidekiq Pro 7.0 and 7.1 support
+- Add Sidekiq Pro 5.5 support
+
 
 ## [1.0.0.alpha.1] - 2023-06-08
 
