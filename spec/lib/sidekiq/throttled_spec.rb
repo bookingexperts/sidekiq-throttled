@@ -49,14 +49,16 @@ RSpec.describe Sidekiq::Throttled do
     if Sidekiq.pro?
       context "with SuperFetch configured" do
         before do
-          Sidekiq.super_fetch!
+          Sidekiq.configure_server do |config|
+            config.super_fetch!
+          end
         end
 
         it "uses SuperFetch as wrapped fetcher" do
           described_class.setup!
 
           if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
-            expect(Sidekiq.default_configuration[:wrapped_fetcher_class]).to eq Sidekiq::BasicFetch
+            expect(Sidekiq.default_configuration[:wrapped_fetcher_class]).to eq Sidekiq::Pro::SuperFetch
           else
             expect(Sidekiq[:wrapped_fetcher]).to be_a(Sidekiq::Pro::SuperFetch)
           end
@@ -170,8 +172,10 @@ RSpec.describe Sidekiq::Throttled do
   if Sidekiq.pro?
     context "with SuperFetch" do
       before do
-        Sidekiq.super_fetch! do
-          Kernel.exit
+        Sidekiq.configure_server do |config|
+          config.super_fetch! do
+            Kernel.exit
+          end
         end
 
         described_class.setup!
@@ -181,7 +185,16 @@ RSpec.describe Sidekiq::Throttled do
         expect(described_class).to receive(:recover!).with("foo")
         expect(Kernel).to receive(:exit)
 
-        Sidekiq[:wrapped_fetcher].notify_orphan("foo")
+        if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
+          Sidekiq
+            .default_configuration
+            .default_capsule
+            .fetcher
+            .wrapped_fetcher
+            .notify_orphan("foo")
+        else
+          Sidekiq[:wrapped_fetcher].notify_orphan("foo")
+        end
       end
     end
   end

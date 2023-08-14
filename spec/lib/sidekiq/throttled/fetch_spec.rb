@@ -127,10 +127,12 @@ RSpec.describe Sidekiq::Throttled::Fetch, :sidekiq => :disabled, verify_stubs: f
           expect(fetcher.retrieve_work).to be_nil
 
           if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
-            expect(redis).to receive(:blocking_call)
+            expect(redis)
+              .to receive(:blocking_call)
               .with(anything, "brpop", "queue:dreamers", 2)
           else
-            expect(redis).to receive(:brpop)
+            expect(redis)
+              .to receive(:brpop)
               .with("queue:dreamers", { timeout: 2 })
           end
 
@@ -145,10 +147,12 @@ RSpec.describe Sidekiq::Throttled::Fetch, :sidekiq => :disabled, verify_stubs: f
           expect(fetcher.retrieve_work).to be_nil
 
           if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
-            expect(redis).to receive(:blocking_call)
+            expect(redis)
+              .to receive(:blocking_call)
               .with(anything, "brpop", "queue:heroes", "queue:dreamers", 2)
           else
-            expect(redis).to receive(:brpop)
+            expect(redis)
+              .to receive(:brpop)
               .with("queue:heroes", "queue:dreamers", { timeout: 2 })
           end
 
@@ -220,12 +224,11 @@ RSpec.describe Sidekiq::Throttled::Fetch, :sidekiq => :disabled, verify_stubs: f
   if Sidekiq.pro?
     context "with SuperFetch" do
       before do
-        Sidekiq.super_fetch!
-
-        if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
-        else
-          Sidekiq[:fetch].startup
+        Sidekiq.configure_server do |config|
+          config.super_fetch!
         end
+
+        fetcher.wrapped_fetcher.startup
 
         Sidekiq::Client.push_bulk({
           "class" => WorkingClassHero,
@@ -242,17 +245,24 @@ RSpec.describe Sidekiq::Throttled::Fetch, :sidekiq => :disabled, verify_stubs: f
       end
 
       describe "#bulk_requeue" do
-        it "requeues using rpoplpush" do
+        it "requeues using rpoplpush/lmove" do
           works = Array.new(3) { fetcher.retrieve_work }
           queue = Sidekiq::Queue.new("heroes")
 
           expect(queue.size).to eq(0)
 
-          Sidekiq.redis do |conn|
-            expect(conn)
-              .to receive(:rpoplpush).with(%r{queue:sq|.*|heroes}, "queue:heroes")
-              .exactly(4).times
-              .and_call_original
+          fetcher.wrapped_fetcher.redis do |conn|
+            if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.1.0")
+              expect(conn)
+                .to receive(:lmove).with(%r{queue:sq|.*|heroes}, "queue:heroes", "RIGHT", "LEFT")
+                .exactly(4).times
+                .and_call_original
+            else
+              expect(conn)
+                .to receive(:rpoplpush).with(%r{queue:sq|.*|heroes}, "queue:heroes")
+                .exactly(4).times
+                .and_call_original
+            end
           end
 
           fetcher.bulk_requeue(works, sidekiq_options)
@@ -263,28 +273,53 @@ RSpec.describe Sidekiq::Throttled::Fetch, :sidekiq => :disabled, verify_stubs: f
 
       describe "#retrieve_work" do
         it "retrieves work using brpoplpush" do
-          Sidekiq.redis do |conn|
-            expect(conn)
-              .to receive(:brpoplpush).with("queue:heroes", %r{queue:sq|.*|heroes}, 1)
-              .and_call_original
+          fetcher.wrapped_fetcher.redis do |conn|
+            if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.1.0")
+              expect(conn)
+                .to receive(:blocking_call)
+                .with(anything, "BLMOVE", "queue:heroes", %r{queue:sq|.*|heroes}, "RIGHT", "LEFT", 1)
+                .and_call_original
+            elsif Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
+              expect(conn)
+                .to receive(:blocking_call)
+                .with(anything, "BRPOPLPUSH", "queue:heroes", %r{queue:sq|.*|heroes}, 1)
+                .and_call_original
+            else
+              expect(conn)
+                .to receive(:brpoplpush)
+                .with("queue:heroes", %r{queue:sq|.*|heroes}, 1)
+                .and_call_original
+            end
           end
 
           fetcher.retrieve_work
         end
 
         it "requeues using the super_requeue script" do
-          Sidekiq::Pro::Scripting.bootstrap
+          if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
+            Sidekiq::Pro::Scripting.bootstrap(fetcher.wrapped_fetcher.config)
+          else
+            Sidekiq::Pro::Scripting.bootstrap
+          end
 
           script_sha = Sidekiq::Pro::Scripting::SHAS[:super_requeue]
 
-          Sidekiq.redis do |conn|
+          fetcher.wrapped_fetcher.redis do |conn|
             allow(Sidekiq::Throttled).to receive(:throttled?).and_return(true)
 
-            expect(conn)
-              .to receive(:evalsha)
-              .with(script_sha, anything, anything)
-              .once
-              .and_call_original
+            if Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new("7.0.0")
+              expect(conn)
+                .to receive(:call)
+                .with("evalsha", script_sha, anything, anything, anything, anything)
+                .once
+                .and_call_original
+            else
+              expect(conn)
+                .to receive(:evalsha)
+                .with(script_sha, anything, anything)
+                .once
+                .and_call_original
+            end
           end
 
           fetcher.retrieve_work

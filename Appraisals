@@ -35,3 +35,17 @@ appraise "sidekiq-pro-5.5.x" do
     gem "sidekiq-pro", "~> 5.5.0"
   end
 end
+
+appraise "sidekiq-pro-7.0.x" do
+  group :test do
+    gem "sidekiq", "~> 7.0.0"
+    gem "sidekiq-pro", "~> 7.0.0"
+  end
+end
+
+appraise "sidekiq-pro-7.1.x" do
+  group :test do
+    gem "sidekiq", "~> 7.1.0"
+    gem "sidekiq-pro", "~> 7.1.0"
+  end
+end
