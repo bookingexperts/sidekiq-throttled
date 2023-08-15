@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'sidekiq/fetch'
+
 # For compatibility with Sidekiq Pro's pausable queues
 module Sidekiq::Throttled
   module Patches
